@@ -1,0 +1,181 @@
+{
+  "_comment": "股票监控配置文件 - 可自由增删股票、调整参数",
+
+  "run_interval_minutes": 30,
+  "dedup_history_count": 3,
+
+  "click_delay_seconds": 1,
+  "delay_after_stock_click_seconds": 1,
+  "delay_before_screenshot_seconds": 1,
+
+  "click_sequence": [
+    {"x": 1063, "y": 62, "_note": "30mins"},
+    {"x": 1123, "y": 73, "_note": "1h"},
+    {"x": 1183, "y": 67, "_note": "2h"},
+    {"x": 1254, "y": 72, "_note": "3h"},
+    {"x": 1319, "y": 71, "_note": "4h"},
+    {"x": 565,  "y": 72, "_note": "day"}
+  ],
+
+  "signal_region": {
+    "_comment": "信号检测矩形区域：左上角(x1,y1) 右下角(x2,y2)，用 cliclick p 或 pyautogui.position() 获取坐标",
+    "x1": 3546,
+    "y1": 1530,
+    "x2": 3758,
+    "y2": 1668
+  },
+
+  "color_detect": {
+    "_comment": "红色=抄底, 绿色=卖出; min_pixels 是判定为有信号所需的最少像素数",
+    "red_min_r": 180,  "red_max_g": 100,  "red_max_b": 100,
+    "green_min_g": 150, "green_max_r": 100, "green_max_b": 100,
+    "min_pixels": 50
+  },
+
+  "email": {
+    "_comment": "sender 是发送邮箱，recipients 是接收邮箱列表（可配多个）",
+    "sender": "z62028719@gmail.com",
+    "recipients": [
+      "z62028719@gmail.com",
+      "nian.li.09@outlook.com",
+      "729405539@qq.com",
+      "731111589@qq.com",
+      "gh_chao@163.com"
+    ],
+    "app_password": "crdw ymsm mnyk doce"
+  },
+
+  
+  "stocks": [
+    {
+      "name": "XAUUSD",
+      "x": 97, "y": 186,
+      "enabled": true
+    },
+    {
+      "name": "UGL",
+      "x": 141, "y": 260,
+      "enabled": true
+    },
+    {
+      "name": "TSLA",
+      "x": 100, "y": 344,
+      "enabled": true
+    },
+    {
+      "name": "TQQQ",
+      "x": 100, "y": 398,
+      "enabled": true
+    },
+    {
+      "name": "QQQ",
+      "x": 100, "y": 455,
+      "enabled": true
+    },
+    {
+      "name": "QCOM",
+      "x": 100, "y": 525,
+      "enabled": true
+    },
+    {
+      "name": "PDD",
+      "x": 100, "y": 582,
+      "enabled": true
+    },
+    {
+      "name": "NVDA",
+      "x": 100, "y": 656,
+      "enabled": true
+    },
+    {
+      "name": "MSFT",
+      "x": 100, "y": 729,
+      "enabled": true
+    },
+    {
+      "name": "GOOG",
+      "x": 100, "y": 792,
+      "enabled": true
+    },
+    {
+      "name": "GLD",
+      "x": 100, "y": 866,
+      "enabled": true
+    },
+    {
+      "name": "FCX",
+      "x": 100, "y": 937,
+      "enabled": true
+    },
+    {
+      "name": "D05",
+      "x": 100, "y": 995,
+      "enabled": true
+    },
+    {
+      "name": "CSCO",
+      "x": 100, "y": 1062,
+      "enabled": true
+    },
+    {
+      "name": "COST",
+      "x": 100, "y": 1116,
+      "enabled": true
+    },
+    {
+      "name": "BTC",
+      "x": 100, "y": 1184,
+      "enabled": true
+    },
+    {
+      "name": "BRKB",
+      "x": 100, "y": 1245,
+      "enabled": true
+    },
+    {
+      "name": "BABA",
+      "x": 100, "y": 1325,
+      "enabled": true
+    },
+    {
+      "name": "AAPL",
+      "x": 100, "y": 1391,
+      "enabled": true
+    },
+    {
+      "name": "昊华科技",
+      "x": 100, "y": 1455,
+      "enabled": true
+    },
+    {
+      "name": "美团-W",
+      "x": 100, "y": 1518,
+      "enabled": true
+    },
+    {
+      "name": "力勤资源",
+      "x": 100, "y": 1581,
+      "enabled": true
+    },
+    {
+      "name": "西部水泥",
+      "x": 100, "y": 1656,
+      "enabled": true
+    },
+    {
+      "name": "恒瑞医药",
+      "x": 100, "y": 1703,
+      "enabled": true
+    },
+    {
+      "name": "东方电气",
+      "x": 100, "y": 1782,
+      "enabled": true
+    },
+    {
+      "name": "华夏航空",
+      "x": 100, "y": 1843,
+      "enabled": true
+    }
+  ]
+}

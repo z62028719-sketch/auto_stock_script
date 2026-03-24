@@ -1,0 +1,5 @@
+pyautogui
+Pillow
+numpy
+
+python -c "import pyautogui, time; time.sleep(1); print(pyautogui.position())"

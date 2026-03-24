@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.stockmonitor</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <!-- ⚠️ 修改为你的实际脚本路径 -->
+        <string>/Users/bytedance/Downloads/auto_stock_script/stock_monitor.py</string>
+    </array>
+
+    <!-- 新加坡时间 SGT = UTC+8，所以：
+         早上 09:00 SGT = 01:00 UTC
+         晚上 21:00 SGT = 13:00 UTC -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>1</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>13</integer>
+            <key>Minute</key>
+            <integer>0</integer>
+        </dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/bytedance/Downloads/auto_stock_script/logs/launchd_stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/bytedance/Downloads/auto_stock_script/logs/launchd_stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
