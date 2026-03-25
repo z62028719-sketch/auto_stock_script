@@ -9,12 +9,12 @@
   "delay_before_screenshot_seconds": 1,
 
   "click_sequence": [
-    {"x": 1144, "y": 70, "_note": "30mins"},
-    {"x": 1204, "y": 73, "_note": "1h"},
-    {"x": 1268, "y": 67, "_note": "2h"},
-    {"x": 1335, "y": 72, "_note": "3h"},
-    {"x": 1395, "y": 71, "_note": "4h"},
-    {"x": 649,  "y": 72, "_note": "day"}
+    {"x": 1151, "y": 70, "_note": "30mins"},
+    {"x": 1211, "y": 73, "_note": "1h"},
+    {"x": 1275, "y": 67, "_note": "2h"},
+    {"x": 1342, "y": 72, "_note": "3h"},
+    {"x": 1402, "y": 71, "_note": "4h"},
+    {"x": 656,  "y": 72, "_note": "day"}
   ],
 
   "signal_region": {
