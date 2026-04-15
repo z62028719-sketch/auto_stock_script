@@ -175,10 +175,10 @@ def process_stock(stock, config):
             "signal": signal,
         })
 
-        try:
-            img_path.unlink()
-        except OSError:
-            pass
+        # try:
+        #     img_path.unlink()
+        # except OSError:
+        #     pass
 
         if signal:
             log.info(f"  ✅ [{note}] 检测到信号: {signal}")
