@@ -170,28 +170,23 @@
       "enabled": true
     },
     {
-      "name": "力勤资源",
+      "name": "西部水泥",
       "x": 100, "y": 1782,
       "enabled": true
     },
     {
-      "name": "西部水泥",
+      "name": "恒瑞医药",
       "x": 100, "y": 1843,
       "enabled": true
     },
     {
-      "name": "恒瑞医药",
+      "name": "东方电气",
       "x": 100, "y": 1908,
       "enabled": true
     },
     {
-      "name": "东方电气",
-      "x": 100, "y": 1974,
-      "enabled": true
-    },
-    {
       "name": "华夏航空",
-      "x": 100, "y": 2034,
+      "x": 100, "y": 1974,
       "enabled": true
     }
   ]
