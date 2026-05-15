@@ -8,6 +8,9 @@ screenshots/
 logs/
 *.log
 
+# Runtime state (signal diff baseline)
+prev_signals.json
+
 # Python
 __pycache__/
 *.py[cod]

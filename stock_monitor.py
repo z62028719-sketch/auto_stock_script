@@ -42,6 +42,7 @@ log = logging.getLogger(__name__)
 # 加载配置文件
 # ─────────────────────────────────────────────
 CONFIG_PATH = Path(__file__).parent / "config.json"
+PREV_SIGNALS_PATH = Path(__file__).parent / "prev_signals.json"
 
 def load_config():
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -210,46 +211,115 @@ def process_stock(stock, config):
 # ─────────────────────────────────────────────
 # 发送邮件报告
 # ─────────────────────────────────────────────
-def send_email_report(results, config, session_time):
-    """发送 HTML 格式的邮件报告，支持多个收件人"""
+def send_email_report(results, config, session_time, new_signals=None, disappeared_signals=None):
+    """发送 HTML 格式的邮件报告，支持多个收件人。
+    new_signals / disappeared_signals 是 (股票, 类型, 周期) 的集合，用于在表格里做差异标记。
+    """
     email_cfg = config["email"]
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     recipients = email_cfg.get("recipients", [email_cfg.get("recipient", "")])
 
+    new_signals = new_signals or set()
+    disappeared_signals = disappeared_signals or set()
+
+    # 把消失的信号按 (股票, 信号类型) 分组，方便在抄底/卖出表中直接渲染划线项
+    disappeared_by_stock_type = {}
+    for stock, sig_type, period in disappeared_signals:
+        disappeared_by_stock_type.setdefault((stock, sig_type), []).append(period)
+    for key in disappeared_by_stock_type:
+        disappeared_by_stock_type[key].sort()
+    stocks_with_disappeared = {stock for stock, _ in disappeared_by_stock_type}
+
     chao_di = [(name, data) for name, data in results.items() if data.get("chao_di_notes")]
     mai_chu = [(name, data) for name, data in results.items() if data.get("mai_chu_notes")]
-    no_signal = [(name, data) for name, data in results.items()
-                 if not data.get("chao_di_notes") and not data.get("mai_chu_notes")]
+    # 本轮无任何信号、且也没有刚消失的信号 → 才算真正"无信号"
+    no_signal = [
+        (name, data) for name, data in results.items()
+        if not data.get("chao_di_notes")
+        and not data.get("mai_chu_notes")
+        and name not in stocks_with_disappeared
+    ]
 
-    def signal_rows(items, color, signal_key):
-        if not items:
+    def render_periods(name, signal_type, periods, base_color):
+        """渲染周期列表：新增的加 🆕 高亮，已消失的用横线划掉。"""
+        parts = []
+        for p in periods:
+            if (name, signal_type, p) in new_signals:
+                parts.append(
+                    f"<span style='background:#fff3cd;color:#d35400;"
+                    f"padding:2px 8px;border-radius:6px;font-weight:bold;"
+                    f"margin-right:6px;border:1px solid #ffeaa7'>🆕 {p}</span>"
+                )
+            else:
+                parts.append(f"<span style='color:{base_color};margin-right:8px'>{p}</span>")
+        # 上一轮存在、本轮消失的周期，用横线划掉
+        for p in disappeared_by_stock_type.get((name, signal_type), []):
+            parts.append(
+                f"<span style='color:#95a5a6;text-decoration:line-through;"
+                f"margin-right:8px' title='上一轮存在，本轮已消失'>{p}</span>"
+            )
+        return "".join(parts)
+
+    def signal_rows(items, color, signal_key, signal_type):
+        """渲染抄底/卖出表：包含本轮信号 + 本轮该类型已完全消失的股票（整行划掉）。"""
+        current_stocks = {name for name, _ in items}
+        # 本轮该类型完全没信号、但上一轮有的股票（需要新起一行用划线展示）
+        extra_stocks = sorted({
+            stock for (stock, t) in disappeared_by_stock_type
+            if t == signal_type and stock not in current_stocks
+        })
+
+        if not items and not extra_stocks:
             return f"<tr><td colspan='2' style='color:#999;padding:8px'>无</td></tr>"
+
         rows_html = ""
         for name, data in items:
-            notes = ", ".join(data.get(signal_key, []))
+            periods = data.get(signal_key, [])
             rows_html += (
                 f"<tr>"
                 f"<td style='padding:8px 16px;font-weight:bold;color:{color}'>{name}</td>"
-                f"<td style='padding:8px 16px;color:{color}'>{notes}</td>"
+                f"<td style='padding:8px 16px;color:{color}'>{render_periods(name, signal_type, periods, color)}</td>"
+                f"</tr>"
+            )
+        # 追加：本轮该类型已完全消失的股票，整行用淡灰+划线
+        for name in extra_stocks:
+            rows_html += (
+                f"<tr>"
+                f"<td style='padding:8px 16px;font-weight:bold;color:#95a5a6;"
+                f"text-decoration:line-through'>{name}</td>"
+                f"<td style='padding:8px 16px'>{render_periods(name, signal_type, [], color)}</td>"
                 f"</tr>"
             )
         return rows_html
+
+    new_count = len(new_signals)
+    disappeared_count = len(disappeared_signals)
+
+    diff_summary = ""
+    if new_count or disappeared_count:
+        diff_summary = (
+            f"<p style='color:#555;background:#f8f9fa;padding:8px 12px;border-left:4px solid #f39c12;border-radius:4px'>"
+            f"📌 与上轮对比：<b style='color:#d35400'>新增 {new_count}</b> 条，"
+            f"<b style='color:#7f8c8d'>消失 {disappeared_count}</b> 条"
+            f"</p>"
+        )
 
     html = f"""
     <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:auto">
     <h2 style="color:#333">📊 股票信号监控报告</h2>
     <p style="color:#666">检测时间：{now_str}（{session_time}场）</p>
+    {diff_summary}
 
     <h3 style="color:#e74c3c">🔴 抄底信号（{len(chao_di)} 只）</h3>
     <table style="width:100%;border-collapse:collapse;background:#fff5f5;border-radius:8px">
       <tr style="border-bottom:1px solid #fcc"><th style="padding:8px 16px;text-align:left">股票</th><th style="padding:8px 16px;text-align:left">触发周期</th></tr>
-      {signal_rows(chao_di, '#e74c3c', 'chao_di_notes')}
+      {signal_rows(chao_di, '#e74c3c', 'chao_di_notes', '抄底')}
     </table>
 
     <h3 style="color:#27ae60">🟢 卖出信号（{len(mai_chu)} 只）</h3>
     <table style="width:100%;border-collapse:collapse;background:#f0fff4;border-radius:8px">
       <tr style="border-bottom:1px solid #cfc"><th style="padding:8px 16px;text-align:left">股票</th><th style="padding:8px 16px;text-align:left">触发周期</th></tr>
-      {signal_rows(mai_chu, '#27ae60', 'mai_chu_notes')}
+      {signal_rows(mai_chu, '#27ae60', 'mai_chu_notes', '卖出')}
     </table>
 
     <h3 style="color:#999">⚪ 无信号（{len(no_signal)} 只）</h3>
@@ -257,14 +327,25 @@ def send_email_report(results, config, session_time):
       {"".join(f"<tr><td style='padding:8px 16px;color:#999'>{name}</td></tr>" for name, _ in no_signal) or "<tr><td style='color:#999;padding:8px'>无</td></tr>"}
     </table>
 
-    <p style="margin-top:24px;color:#aaa;font-size:12px">
+    <p style="margin-top:16px;color:#aaa;font-size:12px">
+      标记说明：<span style='background:#fff3cd;color:#d35400;padding:1px 6px;border-radius:4px;border:1px solid #ffeaa7'>🆕 周期</span> 表示本轮新增；
+      <span style='color:#95a5a6;text-decoration:line-through'>周期</span> 表示上一轮存在、本轮已消失。
+    </p>
+    <p style="margin-top:8px;color:#aaa;font-size:12px">
       此邮件由股票监控脚本自动发送 · Stock Monitor v1.0
     </p>
     </body></html>
     """
 
+    subject_diff = ""
+    if new_count or disappeared_count:
+        subject_diff = f" [新增{new_count}/消失{disappeared_count}]"
+
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"[股票信号] {now_str} {'早' if session_time=='早上' else '晚'}场监控报告 - 抄底{len(chao_di)}只 卖出{len(mai_chu)}只"
+    msg["Subject"] = (
+        f"[股票信号] {now_str} {'早' if session_time=='早上' else '晚'}场监控报告"
+        f" - 抄底{len(chao_di)}只 卖出{len(mai_chu)}只{subject_diff}"
+    )
     msg["From"] = email_cfg["sender"]
     msg["To"] = ", ".join(recipients)
     msg.attach(MIMEText(html, "html", "utf-8"))
@@ -276,6 +357,65 @@ def send_email_report(results, config, session_time):
         log.info(f"✅ 邮件已发送至 {recipients}")
     except Exception as e:
         log.error(f"❌ 邮件发送失败: {e}")
+
+# ─────────────────────────────────────────────
+# 信号差异比较（与上一轮对比，记录新增/消失）
+# ─────────────────────────────────────────────
+def extract_signal_set(results):
+    """
+    将本轮检测结果展开为信号集合：
+    {(股票名, 信号类型, 触发周期), ...}
+    例如: {("AAPL", "抄底", "1h"), ("GLD", "卖出", "day")}
+    """
+    sigs = set()
+    for name, data in results.items():
+        for note in data.get("chao_di_notes", []) or []:
+            sigs.add((name, "抄底", note))
+        for note in data.get("mai_chu_notes", []) or []:
+            sigs.add((name, "卖出", note))
+    return sigs
+
+
+def load_prev_signals():
+    """读取上一轮持久化的信号集合，文件不存在或读取失败时返回 None。"""
+    if not PREV_SIGNALS_PATH.exists():
+        return None
+    try:
+        with open(PREV_SIGNALS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {(s["stock"], s["type"], s["period"]) for s in data.get("signals", [])}
+    except Exception as e:
+        log.warning(f"读取上一轮信号记录失败: {e}")
+        return None
+
+
+def save_current_signals(curr_set):
+    """把本轮信号集合持久化，供下一轮做 diff。"""
+    try:
+        signals = [
+            {"stock": s, "type": t, "period": p}
+            for (s, t, p) in sorted(curr_set)
+        ]
+        with open(PREV_SIGNALS_PATH, "w", encoding="utf-8") as f:
+            json.dump(
+                {"timestamp": datetime.now().isoformat(), "signals": signals},
+                f, ensure_ascii=False, indent=2,
+            )
+    except Exception as e:
+        log.warning(f"保存本轮信号记录失败: {e}")
+
+
+def diff_signals(prev_set, curr_set):
+    """
+    返回 (new_signals, disappeared_signals)。
+    首次运行（prev_set 为 None）返回 (set(), set()) ，避免把全部当新增。
+    """
+    if prev_set is None:
+        return set(), set()
+    new_signals = curr_set - prev_set
+    disappeared = prev_set - curr_set
+    return new_signals, disappeared
+
 
 # ─────────────────────────────────────────────
 # 结果指纹（用于去重）
@@ -349,8 +489,13 @@ def run_monitor():
     interval = config.get("run_interval_minutes", 10)
     history_size = config.get("dedup_history_count", 5)
     history = deque(maxlen=history_size)
+    prev_signals = load_prev_signals()
 
     log.info(f"监控启动 - 每 {interval} 分钟执行一次，去重最近 {history_size} 次记录")
+    if prev_signals is None:
+        log.info("未发现上一轮信号记录，本轮将作为基线，不进行新增/消失对比")
+    else:
+        log.info(f"已加载上一轮信号 {len(prev_signals)} 条，将用于本轮 diff")
 
     while True:
         config = load_config()
@@ -361,16 +506,34 @@ def run_monitor():
             time.sleep(config.get("run_interval_minutes", 10) * 60)
             continue
 
+        curr_signals = extract_signal_set(results)
+        new_signals, disappeared_signals = diff_signals(prev_signals, curr_signals)
+
+        if new_signals:
+            log.info(
+                f"🆕 新增信号 {len(new_signals)} 条: "
+                + ", ".join(f"{s}-{t}({p})" for s, t, p in sorted(new_signals))
+            )
+        if disappeared_signals:
+            log.info(
+                f"⏹️  消失信号 {len(disappeared_signals)} 条: "
+                + ", ".join(f"{s}-{t}({p})" for s, t, p in sorted(disappeared_signals))
+            )
+
         fp = _make_fingerprint(results)
         has_signal = fp != "__NO_SIGNAL__"
 
         if has_signal and fp in history:
             log.info(f"⏭️  本轮信号与最近 {history_size} 次中某次相同，跳过发送邮件")
         elif has_signal:
-            send_email_report(results, config, session_time)
+            send_email_report(results, config, session_time, new_signals, disappeared_signals)
             history.append(fp)
         else:
             log.info("本轮无任何信号，不发送邮件")
+
+        # 无论是否发送邮件，都更新基线，避免下次把"早就存在的信号"误判为新增
+        save_current_signals(curr_signals)
+        prev_signals = curr_signals
 
         interval = config.get("run_interval_minutes", 10)
         log.info(f"下一轮将在 {interval} 分钟后执行...\n")
